@@ -1,13 +1,16 @@
 import { z } from 'zod';
 import { initTRPC } from '@trpc/server';
-import { PlayerSchema, GameResultSchema } from '../types';
+import { GameSession } from '../types';
 import { calculateGamePayments, calculateTotalBalances } from '../utils/gameCalculations';
 
 const t = initTRPC.create();
 
-let gameData = {
+let gameData: {
+  sessions: Map<string, GameSession>;
+  currentSessionId: string | null;
+} = {
   sessions: new Map(),
-  currentSessionId: null as string | null,
+  currentSessionId: null,
 };
 
 export const gameRouter = t.router({
@@ -81,7 +84,7 @@ export const gameRouter = t.router({
       const session = gameData.sessions.get(input.sessionId);
       if (!session) throw new Error('Session not found');
 
-      const allGamesResults = session.games.map((game: any) => game.results);
+      const allGamesResults = session.games.map(game => game.results);
       const balances = calculateTotalBalances(allGamesResults, session.players);
       
       return balances;

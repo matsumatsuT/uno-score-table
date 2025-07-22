@@ -4,10 +4,10 @@ import { createExpressMiddleware } from '@trpc/server/adapters/express';
 import { gameRouter } from './routes/gameRouter';
 
 const app = express();
-const PORT = process.env.PORT || 3002;
+const PORT = process.env.PORT || 9999;
 
 app.use(cors({
-  origin: 'http://localhost:3001',
+  origin: 'http://localhost:3333',
   credentials: true,
 }));
 
