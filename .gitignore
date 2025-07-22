@@ -79,3 +79,6 @@ next-env.d.ts
 # Temporary folders
 tmp/
 temp/
+
+# Claude
+.claude/
