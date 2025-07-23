@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { initTRPC } from '@trpc/server';
 import { GameSession } from '../types';
-import { calculateGamePayments, calculateTotalBalances } from '../utils/gameCalculations';
+import { calculateGamePayments, calculateTotalBalances, calculateIndividualSettlements } from '../utils/gameCalculations';
 
 const t = initTRPC.create();
 
@@ -86,8 +86,9 @@ export const gameRouter = t.router({
 
       const allGamesResults = session.games.map(game => game.results);
       const balances = calculateTotalBalances(allGamesResults, session.players);
+      const individualSettlements = calculateIndividualSettlements(allGamesResults, session.players);
       
-      return balances;
+      return { balances, individualSettlements };
     }),
 
   getCurrentSession: t.procedure
@@ -96,6 +97,43 @@ export const gameRouter = t.router({
       
       const session = gameData.sessions.get(gameData.currentSessionId);
       return session || null;
+    }),
+
+  getGameHistory: t.procedure
+    .input(z.object({
+      sessionId: z.string(),
+    }))
+    .query(({ input }) => {
+      const session = gameData.sessions.get(input.sessionId);
+      if (!session) throw new Error('Session not found');
+      
+      return session.games.map(game => ({
+        id: game.id,
+        results: game.results,
+        payments: calculateGamePayments(game.results, session.players),
+      }));
+    }),
+
+  finishSession: t.procedure
+    .input(z.object({
+      sessionId: z.string(),
+    }))
+    .mutation(({ input }) => {
+      const session = gameData.sessions.get(input.sessionId);
+      if (!session) throw new Error('Session not found');
+      
+      const allGamesResults = session.games.map(game => game.results);
+      const balances = calculateTotalBalances(allGamesResults, session.players);
+      const individualSettlements = calculateIndividualSettlements(allGamesResults, session.players);
+      
+      // セッション終了時の処理（必要に応じて）
+      
+      return { 
+        sessionId: input.sessionId,
+        totalGames: session.games.length,
+        balances, 
+        individualSettlements 
+      };
     }),
 });
 
