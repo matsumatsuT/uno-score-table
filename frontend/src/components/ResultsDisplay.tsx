@@ -1,5 +1,7 @@
 'use client';
 
+import { useState } from 'react';
+
 interface Player {
   id: string;
   name: string;
@@ -25,6 +27,14 @@ interface PlayerBalance {
   netBalance: number;
 }
 
+interface IndividualSettlement {
+  fromPlayerId: string;
+  fromPlayerName: string;
+  toPlayerId: string;
+  toPlayerName: string;
+  amount: number;
+}
+
 interface ResultsDisplayProps {
   players: Player[];
   games: Array<{
@@ -33,6 +43,7 @@ interface ResultsDisplayProps {
     payments: PaymentRecord[];
   }>;
   finalBalances: PlayerBalance[];
+  individualSettlements: IndividualSettlement[];
   onNewGame: () => void;
   onFinishSession: () => void;
 }
@@ -40,10 +51,13 @@ interface ResultsDisplayProps {
 export function ResultsDisplay({ 
   players, 
   games, 
-  finalBalances, 
+  finalBalances: _finalBalances, 
+  individualSettlements,
   onNewGame, 
   onFinishSession 
 }: ResultsDisplayProps) {
+  const [showDetails, setShowDetails] = useState(false);
+
   const getPlayerName = (playerId: string) => {
     return players.find(p => p.id === playerId)?.name || playerId;
   };
@@ -59,98 +73,109 @@ export function ResultsDisplay({
         <p className="text-gray-600">現在 {games.length} 試合完了</p>
       </div>
 
-      {/* 試合毎の結果 */}
+      {/* 試合概要 */}
       <div className="bg-white rounded-lg shadow-md p-6">
-        <h3 className="text-xl font-semibold mb-4">試合履歴</h3>
-        <div className="space-y-4">
-          {games.map((game, index) => {
-            const winner = game.results.find(r => r.isWinner);
-            const winnerName = winner ? getPlayerName(winner.playerId) : '不明';
-            
-            return (
-              <div key={game.id} className="border rounded-lg p-4">
-                <div className="flex justify-between items-center mb-3">
-                  <h4 className="font-semibold">{index + 1}試合目</h4>
-                  <span className="text-green-600 font-bold">勝者: {winnerName}</span>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <h5 className="font-medium mb-2">ポイント詳細</h5>
-                    <ul className="space-y-1 text-sm">
-                      {game.results.map(result => (
-                        <li key={result.playerId} className="flex justify-between">
-                          <span>{getPlayerName(result.playerId)}</span>
-                          <span className={result.isWinner ? 'text-green-600 font-bold' : ''}>
-                            {result.isWinner ? '勝者' : `${result.points}ポイント`}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  
-                  <div>
-                    <h5 className="font-medium mb-2">支払い詳細</h5>
-                    <ul className="space-y-1 text-sm">
-                      {game.payments.map((payment, idx) => (
-                        <li key={idx} className="flex justify-between">
-                          <span>
-                            {getPlayerName(payment.from)} → {getPlayerName(payment.to)}
-                          </span>
-                          <span className="font-bold text-red-600">
-                            {formatCurrency(payment.amount)}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-xl font-semibold">試合概要</h3>
+          <button
+            onClick={() => setShowDetails(!showDetails)}
+            className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 text-sm"
+          >
+            {showDetails ? '詳細を非表示' : '詳細を表示'}
+          </button>
+        </div>
+        <div className="text-center text-gray-600">
+          <span className="text-2xl font-bold text-gray-800">{games.length}</span> 試合完了
         </div>
       </div>
 
-      {/* 累計収支 */}
-      {finalBalances.length > 0 && (
+      {/* 試合詳細（切り替え表示） */}
+      {showDetails && (
         <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-xl font-semibold mb-4">累計収支</h3>
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left py-2">プレイヤー</th>
-                  <th className="text-right py-2">支払い合計</th>
-                  <th className="text-right py-2">受取合計</th>
-                  <th className="text-right py-2">収支</th>
-                </tr>
-              </thead>
-              <tbody>
-                {finalBalances
-                  .sort((a, b) => b.netBalance - a.netBalance)
-                  .map(balance => (
-                  <tr key={balance.playerId} className="border-b">
-                    <td className="py-3 font-medium">{balance.playerName}</td>
-                    <td className="text-right py-3 text-red-600">
-                      -{formatCurrency(balance.totalPaid)}
-                    </td>
-                    <td className="text-right py-3 text-green-600">
-                      +{formatCurrency(balance.totalReceived)}
-                    </td>
-                    <td className={`text-right py-3 font-bold ${
-                      balance.netBalance > 0 ? 'text-green-600' : 
-                      balance.netBalance < 0 ? 'text-red-600' : 'text-gray-600'
-                    }`}>
-                      {balance.netBalance > 0 ? '+' : ''}
-                      {formatCurrency(balance.netBalance)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <h3 className="text-xl font-semibold mb-4">試合履歴</h3>
+          <div className="space-y-4">
+            {games.map((game, index) => {
+              const winner = game.results.find(r => r.isWinner);
+              const winnerName = winner ? getPlayerName(winner.playerId) : '不明';
+              
+              return (
+                <div key={game.id} className="border rounded-lg p-4">
+                  <div className="flex justify-between items-center mb-3">
+                    <h4 className="font-semibold">{index + 1}試合目</h4>
+                    <span className="text-green-600 font-bold">勝者: {winnerName}</span>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <h5 className="font-medium mb-2">ポイント詳細</h5>
+                      <ul className="space-y-1 text-sm">
+                        {game.results.map(result => (
+                          <li key={result.playerId} className="flex justify-between">
+                            <span>{getPlayerName(result.playerId)}</span>
+                            <span className={result.isWinner ? 'text-green-600 font-bold' : ''}>
+                              {result.isWinner ? '勝者' : `${result.points}ポイント`}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    
+                    <div>
+                      <h5 className="font-medium mb-2">支払い詳細</h5>
+                      <ul className="space-y-1 text-sm">
+                        {game.payments.map((payment, idx) => (
+                          <li key={idx} className="flex justify-between">
+                            <span>
+                              {getPlayerName(payment.from)} → {getPlayerName(payment.to)}
+                            </span>
+                            <span className="font-bold text-red-600">
+                              {formatCurrency(payment.amount)}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
+
+      {/* 個別精算 */}
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <h3 className="text-xl font-semibold mb-4">最終精算</h3>
+        {individualSettlements.length > 0 ? (
+          <div className="space-y-3">
+            {individualSettlements.map((settlement, index) => (
+              <div 
+                key={index} 
+                className="flex justify-between items-center p-4 bg-gray-50 rounded-lg border"
+              >
+                <div className="flex items-center space-x-3">
+                  <span className="font-medium text-gray-800">
+                    {settlement.fromPlayerName}
+                  </span>
+                  <span className="text-gray-500">→</span>
+                  <span className="font-medium text-gray-800">
+                    {settlement.toPlayerName}
+                  </span>
+                </div>
+                <div className="text-right">
+                  <span className="text-xl font-bold text-red-600">
+                    {formatCurrency(settlement.amount)}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8 text-gray-500">
+            精算不要です
+          </div>
+        )}
+      </div>
 
       <div className="flex gap-4 justify-center">
         <button
