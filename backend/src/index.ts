@@ -17,6 +17,10 @@ app.use(
   '/trpc',
   createExpressMiddleware({
     router: gameRouter,
+    createContext: ({ req, res }) => ({
+      req,
+      res,
+    }),
   })
 );
 

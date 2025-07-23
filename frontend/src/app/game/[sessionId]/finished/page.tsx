@@ -3,30 +3,14 @@
 import { useRouter, useParams } from 'next/navigation';
 import { trpc } from '@/utils/trpc';
 
-interface PlayerBalance {
-  playerId: string;
-  playerName: string;
-  totalPaid: number;
-  totalReceived: number;
-  netBalance: number;
-}
-
-interface IndividualSettlement {
-  fromPlayerId: string;
-  fromPlayerName: string;
-  toPlayerId: string;
-  toPlayerName: string;
-  amount: number;
-}
-
 export default function FinishedPage() {
   const router = useRouter();
   const params = useParams();
   const sessionId = params.sessionId as string;
   
   // tRPCでセッション情報を取得
-  const { data: session } = trpc.getSession.useQuery({ sessionId });
-  const { data: balanceData } = trpc.calculateFinalBalances.useQuery({ sessionId });
+  const { data: session, isLoading: sessionLoading, error: sessionError } = trpc.getSession.useQuery({ sessionId });
+  const { data: balanceData, isLoading: balanceLoading, error: balanceError } = trpc.calculateFinalBalances.useQuery({ sessionId });
 
   const handleStartOver = () => {
     router.push('/');
@@ -36,11 +20,34 @@ export default function FinishedPage() {
     return `${amount.toLocaleString()}円`;
   };
 
-  if (!session || !balanceData) {
+  // エラーハンドリング
+  if (sessionError || balanceError) {
+    return (
+      <main className="min-h-screen bg-gray-50 py-8">
+        <div className="container mx-auto px-4 text-center">
+          <div className="text-xl text-red-600 mb-4">エラーが発生しました</div>
+          <div className="text-gray-600 mb-4">
+            {sessionError?.message || balanceError?.message}
+          </div>
+          <button
+            onClick={() => router.push('/')}
+            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          >
+            ホームに戻る
+          </button>
+        </div>
+      </main>
+    );
+  }
+
+  if (sessionLoading || balanceLoading || !session || !balanceData) {
     return (
       <main className="min-h-screen bg-gray-50 py-8">
         <div className="container mx-auto px-4 text-center">
           <div className="text-xl">セッション情報を読み込み中...</div>
+          <div className="text-sm text-gray-500 mt-2">
+            セッションID: {sessionId}
+          </div>
         </div>
       </main>
     );

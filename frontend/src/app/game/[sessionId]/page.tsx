@@ -19,7 +19,7 @@ export default function GamePage() {
   const [loading, setLoading] = useState(false);
   
   // tRPCでセッション情報を取得
-  const { data: session, isLoading } = trpc.getSession.useQuery({ sessionId });
+  const { data: session, isLoading, error } = trpc.getSession.useQuery({ sessionId });
   const addGameResultMutation = trpc.addGameResult.useMutation();
 
   const handleGameComplete = async (results: GameResult[]) => {
@@ -37,11 +37,32 @@ export default function GamePage() {
     }
   };
 
+  // エラーハンドリング
+  if (error) {
+    return (
+      <main className="min-h-screen bg-gray-50 py-8">
+        <div className="container mx-auto px-4 text-center">
+          <div className="text-xl text-red-600 mb-4">エラーが発生しました</div>
+          <div className="text-gray-600 mb-4">{error.message}</div>
+          <button
+            onClick={() => router.push('/')}
+            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          >
+            ホームに戻る
+          </button>
+        </div>
+      </main>
+    );
+  }
+
   if (isLoading) {
     return (
       <main className="min-h-screen bg-gray-50 py-8">
         <div className="container mx-auto px-4 text-center">
           <div className="text-xl">セッション情報を読み込み中...</div>
+          <div className="text-sm text-gray-500 mt-2">
+            セッションID: {sessionId}
+          </div>
         </div>
       </main>
     );
