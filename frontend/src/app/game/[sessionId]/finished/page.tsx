@@ -1,16 +1,19 @@
 'use client';
 
-import { useRouter, useParams } from 'next/navigation';
-import { trpc } from '@/utils/trpc';
+import { useQuery } from '@tanstack/react-query';
+import { useParams, useRouter } from 'next/navigation';
+import { Loading } from '@/components/ui/Loading';
+import { useTRPC } from '@/utils/trpc';
 
-export default function FinishedPage() {
+const FinishedPage = () => {
   const router = useRouter();
   const params = useParams();
   const sessionId = params.sessionId as string;
-  
-  // tRPCでセッション情報を取得
-  const { data: session, isLoading: sessionLoading, error: sessionError } = trpc.getSession.useQuery({ sessionId });
-  const { data: balanceData, isLoading: balanceLoading, error: balanceError } = trpc.calculateFinalBalances.useQuery({ sessionId });
+
+  const trpc = useTRPC();
+  const sessionQuery = useQuery(
+    trpc.getSession.queryOptions({ id: sessionId })
+  );
 
   const handleStartOver = () => {
     router.push('/');
@@ -20,15 +23,12 @@ export default function FinishedPage() {
     return `${amount.toLocaleString()}円`;
   };
 
-  // エラーハンドリング
-  if (sessionError || balanceError) {
+  if (sessionQuery.error) {
     return (
       <main className="min-h-screen bg-gray-50 py-8">
         <div className="container mx-auto px-4 text-center">
-          <div className="text-xl text-red-600 mb-4">エラーが発生しました</div>
-          <div className="text-gray-600 mb-4">
-            {sessionError?.message || balanceError?.message}
-          </div>
+          <p className="text-xl text-red-600 mb-4">エラーが発生しました</p>
+          <p className="text-gray-600 mb-4">{sessionQuery.error.message}</p>
           <button
             onClick={() => router.push('/')}
             className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
@@ -40,37 +40,39 @@ export default function FinishedPage() {
     );
   }
 
-  if (sessionLoading || balanceLoading || !session || !balanceData) {
+  if (sessionQuery.isLoading || !sessionQuery.data) {
     return (
       <main className="min-h-screen bg-gray-50 py-8">
-        <div className="container mx-auto px-4 text-center">
-          <div className="text-xl">セッション情報を読み込み中...</div>
-          <div className="text-sm text-gray-500 mt-2">
-            セッションID: {sessionId}
-          </div>
+        <div className="container mx-auto px-4">
+          <Loading message="セッション情報を読み込み中..." />
         </div>
       </main>
     );
   }
+
+  const session = sessionQuery.data;
+  const { balances, settlements } = session.summary;
 
   return (
     <main className="min-h-screen bg-gray-50 py-8">
       <div className="container mx-auto px-4">
         <div className="max-w-4xl mx-auto text-center">
           <div className="bg-white rounded-lg shadow-md p-8">
-            <h2 className="text-3xl font-bold mb-4 text-gray-800">セッション終了</h2>
+            <h2 className="text-3xl font-bold mb-4 text-gray-800">
+              セッション終了
+            </h2>
             <p className="text-gray-600 mb-8">
               全 {session.games.length} 試合が完了しました。お疲れ様でした！
             </p>
-            
+
             {/* 最終精算 */}
             <div className="mb-8">
               <h3 className="text-xl font-semibold mb-4">最終精算</h3>
-              {balanceData.individualSettlements.length > 0 ? (
+              {settlements.length > 0 ? (
                 <div className="space-y-3">
-                  {balanceData.individualSettlements.map((settlement, index) => (
-                    <div 
-                      key={index} 
+                  {settlements.map((settlement, index) => (
+                    <div
+                      key={index}
                       className="flex justify-between items-center p-4 bg-gray-50 rounded-lg border"
                     >
                       <div className="flex items-center space-x-3">
@@ -98,32 +100,36 @@ export default function FinishedPage() {
             </div>
 
             {/* 各プレイヤーの収支 */}
-            {balanceData.balances.length > 0 && (
+            {balances.length > 0 && (
               <div className="mb-8">
                 <h3 className="text-xl font-semibold mb-4">各プレイヤーの収支</h3>
                 <div className="space-y-2">
-                  {balanceData.balances
+                  {[...balances]
                     .sort((a, b) => b.netBalance - a.netBalance)
-                    .map(balance => (
-                    <div 
-                      key={balance.playerId} 
-                      className={`p-4 rounded-lg ${
-                        balance.netBalance > 0 ? 'bg-green-100 text-green-800' :
-                        balance.netBalance < 0 ? 'bg-red-100 text-red-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}
-                    >
-                      <span className="font-bold">{balance.playerName}: </span>
-                      <span className="text-lg">
-                        {balance.netBalance > 0 ? '+' : ''}
-                        {formatCurrency(balance.netBalance)}
-                      </span>
-                    </div>
-                  ))}
+                    .map((balance) => (
+                      <div
+                        key={balance.playerId}
+                        className={`p-4 rounded-lg ${
+                          balance.netBalance > 0
+                            ? 'bg-green-100 text-green-800'
+                            : balance.netBalance < 0
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-gray-100 text-gray-800'
+                        }`}
+                      >
+                        <span className="font-bold">
+                          {balance.playerName}:{' '}
+                        </span>
+                        <span className="text-lg">
+                          {balance.netBalance > 0 ? '+' : ''}
+                          {formatCurrency(balance.netBalance)}
+                        </span>
+                      </div>
+                    ))}
                 </div>
               </div>
             )}
-            
+
             <button
               onClick={handleStartOver}
               className="px-8 py-3 bg-blue-500 text-white rounded hover:bg-blue-600 font-semibold"
@@ -135,4 +141,6 @@ export default function FinishedPage() {
       </div>
     </main>
   );
-}
+};
+
+export default FinishedPage;

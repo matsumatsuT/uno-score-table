@@ -1,35 +1,41 @@
 'use client';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { httpLink, loggerLink } from '@trpc/client';
-import { useState } from 'react';
-import { trpc } from '@/utils/trpc';
+import { createTRPCClient, httpBatchLink } from '@trpc/client';
+import { useState, type ReactNode } from 'react';
+import type { AppRouter } from '@/server/routers/gameRouter';
+import { TRPCProvider } from '@/utils/trpc';
 
-export function TrpcProvider({ children }: { children: React.ReactNode }) {
-  const [queryClient] = useState(() => new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: 1,
-        refetchOnWindowFocus: false,
-      },
-    },
-  }));
-  
+type TrpcProviderProps = {
+  children: ReactNode;
+};
+
+export const TrpcProvider = ({ children }: TrpcProviderProps) => {
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            retry: 1,
+            refetchOnWindowFocus: false,
+          },
+        },
+      })
+  );
+
   const [trpcClient] = useState(() =>
-    trpc.createClient({
-      links: [
-        httpLink({
-          url: 'http://localhost:9999/trpc',
-        }),
-      ],
+    createTRPCClient<AppRouter>({
+      // Next.js Route Handler でマウントした tRPC エンドポイントを叩く
+      // 相対 URL なのでブラウザのオリジン（dev: 3333, prod: 本番ドメイン）に追従する
+      links: [httpBatchLink({ url: '/api/trpc' })],
     })
   );
 
   return (
-    <trpc.Provider client={trpcClient} queryClient={queryClient}>
-      <QueryClientProvider client={queryClient}>
+    <QueryClientProvider client={queryClient}>
+      <TRPCProvider trpcClient={trpcClient} queryClient={queryClient}>
         {children}
-      </QueryClientProvider>
-    </trpc.Provider>
+      </TRPCProvider>
+    </QueryClientProvider>
   );
-}
+};
