@@ -147,3 +147,16 @@ ID はすべて UUID。トランザクションは `db.transaction()`（Pool 経
 - 型定義は `type`（`interface` は使わない）
 - コンポーネント定義はアロー関数（`function` 宣言は使わない）
 - 上記2点は global の `nextjs-rules` 由来
+
+## 7. パッケージ追加のルール
+
+依存追加（`pnpm add ...`）は **必ず `frontend/` ディレクトリで実行**する。
+リポジトリルートで誤って実行するとルートに `package.json` / `pnpm-lock.yaml` / `node_modules` が出来てしまい、`next build` で「Found multiple lockfiles」警告が出る + 意図しないバージョンが解決される。
+
+```bash
+# OK
+cd frontend && pnpm add <package>
+
+# NG（リポジトリルートで実行）
+pnpm add <package>
+```
