@@ -1,6 +1,5 @@
-version: "3.8"
-
 services:
+  # Next.js（フロントエンド + API + tRPC を集約）
   frontend:
     build:
       context: ./frontend
@@ -12,21 +11,9 @@ services:
       - /app/node_modules
     environment:
       - NODE_ENV=development
-    depends_on:
-      - backend
 
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    ports:
-      - "9999:9999"
-    volumes:
-      - ./backend:/app
-      - /app/node_modules
-    environment:
-      - NODE_ENV=development
-
+  # ローカル開発時に Neon を使わず Postgres を起動したいときに使う（任意）
+  # 通常は .env.local の DATABASE_URL に Neon を指す
   postgres:
     image: postgres:15
     environment:
