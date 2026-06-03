@@ -1,22 +1,24 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Loading } from '@/components/ui/Loading';
 import { useTRPC } from '@/utils/trpc';
 
-type PlayerRegistrationProps = {
-  onComplete: (playerIds: string[]) => void;
-};
-
 type FormData = {
   newPlayerName: string;
 };
 
-export const PlayerRegistration = ({ onComplete }: PlayerRegistrationProps) => {
+// `/` の client 画面。
+// プレイヤー一覧表示 / 選択 / マスタへの新規追加 / セッション作成 + 遷移を1コンポーネントに集約。
+export const TopPage = () => {
+  const router = useRouter();
   const trpc = useTRPC();
   const queryClient = useQueryClient();
+
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const playersQuery = useQuery(trpc.listPlayers.queryOptions());
   const addPlayer = useMutation({
@@ -26,12 +28,14 @@ export const PlayerRegistration = ({ onComplete }: PlayerRegistrationProps) => {
       await queryClient.invalidateQueries({
         queryKey: trpc.listPlayers.queryKey(),
       });
-      setSelectedIds((prev) => new Set(prev).add(newPlayer.id));
+      setSelectedIds((prev) =>
+        prev.includes(newPlayer.id) ? prev : [...prev, newPlayer.id]
+      );
       reset();
     },
   });
+  const createSession = useMutation(trpc.createSession.mutationOptions());
 
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const {
     register,
     handleSubmit,
@@ -43,33 +47,34 @@ export const PlayerRegistration = ({ onComplete }: PlayerRegistrationProps) => {
   const newPlayerName = watch('newPlayerName');
 
   const toggleSelect = (playerId: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(playerId)) {
-        next.delete(playerId);
-      } else {
-        next.add(playerId);
-      }
-      return next;
-    });
+    setSelectedIds((prev) =>
+      prev.includes(playerId)
+        ? prev.filter((id) => id !== playerId)
+        : [...prev, playerId]
+    );
   };
 
   const selectAll = () => {
     const all = playersQuery.data ?? [];
-    setSelectedIds(new Set(all.map((p) => p.id)));
+    setSelectedIds(all.map((p) => p.id));
   };
 
   const clearAll = () => {
-    setSelectedIds(new Set());
+    setSelectedIds([]);
   };
 
   const handleAddPlayer = (data: FormData) => {
     addPlayer.mutate({ name: data.newPlayerName.trim() });
   };
 
-  const handleStartGame = () => {
-    if (selectedIds.size >= 2) {
-      onComplete(Array.from(selectedIds));
+  const handleStartGame = async () => {
+    if (selectedIds.length < 2) return;
+    try {
+      const result = await createSession.mutateAsync({ playerIds: selectedIds });
+      router.push(`/game/${result.id}`);
+    } catch (error) {
+      // createSession.error に反映されるため、UI 側のエラー表示で扱う
+      console.error('セッション作成エラー:', error);
     }
   };
 
@@ -81,6 +86,26 @@ export const PlayerRegistration = ({ onComplete }: PlayerRegistrationProps) => {
     return (
       <div className="max-w-md mx-auto p-6 text-center">
         <p className="text-red-600">エラー: {playersQuery.error.message}</p>
+      </div>
+    );
+  }
+
+  if (createSession.isPending) {
+    return <Loading message="セッションを作成中..." />;
+  }
+
+  if (createSession.error) {
+    return (
+      <div className="max-w-md mx-auto p-6 text-center">
+        <p className="text-xl text-red-600 mb-4">エラーが発生しました</p>
+        <p className="text-gray-600 mb-4">{createSession.error.message}</p>
+        <button
+          type="button"
+          onClick={() => createSession.reset()}
+          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+        >
+          再試行
+        </button>
       </div>
     );
   }
@@ -103,7 +128,7 @@ export const PlayerRegistration = ({ onComplete }: PlayerRegistrationProps) => {
             >
               全員選択
             </button>
-            {selectedIds.size > 0 && (
+            {selectedIds.length > 0 && (
               <button
                 type="button"
                 onClick={clearAll}
@@ -121,7 +146,7 @@ export const PlayerRegistration = ({ onComplete }: PlayerRegistrationProps) => {
         ) : (
           <div className="flex flex-wrap gap-2">
             {players.map((player) => {
-              const isSelected = selectedIds.has(player.id);
+              const isSelected = selectedIds.includes(player.id);
               return (
                 <button
                   key={player.id}
@@ -182,20 +207,21 @@ export const PlayerRegistration = ({ onComplete }: PlayerRegistrationProps) => {
       </form>
 
       {/* 選択数表示 */}
-      {selectedIds.size > 0 && (
+      {selectedIds.length > 0 && (
         <div className="mb-4 p-3 bg-blue-50 rounded">
           <p className="text-sm font-semibold text-blue-900">
-            選択中: {selectedIds.size}名
+            選択中: {selectedIds.length}名
           </p>
         </div>
       )}
 
       <button
+        type="button"
         onClick={handleStartGame}
-        disabled={selectedIds.size < 2}
+        disabled={selectedIds.length < 2}
         className="w-full py-3 bg-green-500 text-white rounded hover:bg-green-600 disabled:bg-gray-300 font-semibold"
       >
-        ゲーム開始 {selectedIds.size >= 2 ? '' : '(最低2名必要)'}
+        ゲーム開始 {selectedIds.length >= 2 ? '' : '(最低2名必要)'}
       </button>
     </div>
   );

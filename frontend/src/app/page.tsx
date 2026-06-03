@@ -1,6 +1,13 @@
-import { SessionCreator } from '@/components/SessionCreator';
+import { HydrationBoundary, dehydrate } from '@tanstack/react-query';
+import { TopPage } from '@/components/TopPage';
+import { getQueryClient, serverTrpc } from '@/utils/trpc.server';
 
-const Home = () => {
+const Top = async () => {
+  const queryClient = getQueryClient();
+  // TopPage が使う listPlayers を事前取得し、
+  // クライアント側の初回ローディングを消す
+  await queryClient.prefetchQuery(serverTrpc.listPlayers.queryOptions());
+
   return (
     <main className="min-h-screen bg-gray-50 py-8">
       <div className="container mx-auto px-4">
@@ -8,10 +15,12 @@ const Home = () => {
           UNO Score Table
         </h1>
 
-        <SessionCreator />
+        <HydrationBoundary state={dehydrate(queryClient)}>
+          <TopPage />
+        </HydrationBoundary>
       </div>
     </main>
   );
 };
 
-export default Home;
+export default Top;

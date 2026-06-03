@@ -103,7 +103,7 @@ return (
 ### prefetch の状態
 | ページ | 状態 |
 |---|---|
-| `/` | データなし、SessionCreator で client side mutation のみ |
+| `/` | ✅ Server Component で `listPlayers` prefetch 済み（TopPage が即描画） |
 | `/game/[id]` | useQuery のみ（mutation 主体なので prefetch 不要） |
 | `/game/[id]/results` | ✅ Server Component で `getSession` prefetch 済み |
 | `/game/[id]/finished` | useQuery のみ |
@@ -139,6 +139,18 @@ ID はすべて UUID。トランザクションは `db.transaction()`（Pool 経
 - 静的なレイアウトは Server Component 側に置く
 - インタラクションが要る部分だけ Client Component に切り出し、ツリーの葉に配置
 - 共通 loading UI は `@/components/ui/Loading`、ルートセグメントの loading は `app/loading.tsx`
+
+### 命名規約: client 画面コンポーネントは `~~Page`
+
+`'use client'` で「画面全体」を表すコンポーネントは `XxxPage` という名前にする（例: `TopPage`, `ResultsView` のような既存命名も将来的には統一していく）。
+Server Component の `app/<route>/page.tsx` 側は `Top`, `Game` のように画面短名で export し、その中で `<XxxPage />` を呼ぶ。
+
+| Server (`page.tsx`) | Client 画面 | 配置 |
+|---|---|---|
+| `Top` | `TopPage` | `src/components/TopPage.tsx` |
+| `ResultsPage`（既存） | `ResultsView`（既存） | `src/app/.../results/ResultsView.tsx` |
+
+`HomeClient` のような「`'use client'` 境界を表すだけ」の命名は使わない。責務（=どの画面か）を名前に出す。
 
 ---
 
