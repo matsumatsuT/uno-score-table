@@ -53,8 +53,6 @@ export const ResultsView = ({ sessionId }: ResultsViewProps) => {
     <ResultsDisplay
       players={session.players}
       games={session.games}
-      finalBalances={session.summary.balances}
-      individualSettlements={session.summary.settlements}
       onNewGame={handleNewGame}
       onFinishSession={handleFinishSession}
     />

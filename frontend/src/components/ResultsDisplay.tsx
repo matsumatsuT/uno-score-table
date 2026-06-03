@@ -19,22 +19,6 @@ interface PaymentRecord {
   amount: number;
 }
 
-interface PlayerBalance {
-  playerId: string;
-  playerName: string;
-  totalPaid: number;
-  totalReceived: number;
-  netBalance: number;
-}
-
-interface IndividualSettlement {
-  fromPlayerId: string;
-  fromPlayerName: string;
-  toPlayerId: string;
-  toPlayerName: string;
-  amount: number;
-}
-
 interface ResultsDisplayProps {
   players: Player[];
   games: Array<{
@@ -42,19 +26,15 @@ interface ResultsDisplayProps {
     results: GameResult[];
     payments: PaymentRecord[];
   }>;
-  finalBalances: PlayerBalance[];
-  individualSettlements: IndividualSettlement[];
   onNewGame: () => void;
   onFinishSession: () => void;
 }
 
-export function ResultsDisplay({ 
-  players, 
-  games, 
-  finalBalances: _finalBalances, 
-  individualSettlements,
-  onNewGame, 
-  onFinishSession 
+export function ResultsDisplay({
+  players,
+  games,
+  onNewGame,
+  onFinishSession,
 }: ResultsDisplayProps) {
   const [showDetails, setShowDetails] = useState(false);
 
@@ -97,14 +77,14 @@ export function ResultsDisplay({
             {games.map((game, index) => {
               const winner = game.results.find(r => r.isWinner);
               const winnerName = winner ? getPlayerName(winner.playerId) : '不明';
-              
+
               return (
                 <div key={game.id} className="border rounded-lg p-4">
                   <div className="flex justify-between items-center mb-3">
                     <h4 className="font-semibold">{index + 1}試合目</h4>
                     <span className="text-green-600 font-bold">勝者: {winnerName}</span>
                   </div>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <h5 className="font-medium mb-2">ポイント詳細</h5>
@@ -119,7 +99,7 @@ export function ResultsDisplay({
                         ))}
                       </ul>
                     </div>
-                    
+
                     <div>
                       <h5 className="font-medium mb-2">支払い詳細</h5>
                       <ul className="space-y-1 text-sm">
@@ -142,40 +122,6 @@ export function ResultsDisplay({
           </div>
         </div>
       )}
-
-      {/* 個別精算 */}
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h3 className="text-xl font-semibold mb-4">最終精算</h3>
-        {individualSettlements.length > 0 ? (
-          <div className="space-y-3">
-            {individualSettlements.map((settlement, index) => (
-              <div 
-                key={index} 
-                className="flex justify-between items-center p-4 bg-gray-50 rounded-lg border"
-              >
-                <div className="flex items-center space-x-3">
-                  <span className="font-medium text-gray-800">
-                    {settlement.fromPlayerName}
-                  </span>
-                  <span className="text-gray-500">→</span>
-                  <span className="font-medium text-gray-800">
-                    {settlement.toPlayerName}
-                  </span>
-                </div>
-                <div className="text-right">
-                  <span className="text-xl font-bold text-red-600">
-                    {formatCurrency(settlement.amount)}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-8 text-gray-500">
-            精算不要です
-          </div>
-        )}
-      </div>
 
       <div className="flex gap-4 justify-center">
         <button

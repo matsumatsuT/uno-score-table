@@ -28,11 +28,13 @@ const GamePage = () => {
     try {
       setSubmitting(true);
       await addGameResult.mutateAsync({ sessionId, results });
+      // results ページの Server Component が prefetch を終えるまで
+      // navigation は完了しないので、submitting を true のまま保持して
+      // 旧画面（GameBoard）の再表示を防ぐ。アンマウント時に state ごと破棄される
       router.push(`/game/${sessionId}/results`);
     } catch (error) {
       console.error('ゲーム結果保存エラー:', error);
       alert('ゲーム結果の保存に失敗しました');
-    } finally {
       setSubmitting(false);
     }
   };
