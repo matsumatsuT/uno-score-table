@@ -1,41 +1,24 @@
 'use client';
 
 import { useState } from 'react';
+import type { RouterOutputs } from '@/utils/trpc';
 
-interface Player {
-  id: string;
-  name: string;
-}
+// tRPC ルーターから戻り値型を引っ張ることで、サーバー側変更に追従する
+type SessionData = RouterOutputs['getSession'];
 
-interface GameResult {
-  playerId: string;
-  points: number;
-  isWinner: boolean;
-}
-
-interface PaymentRecord {
-  from: string;
-  to: string;
-  amount: number;
-}
-
-interface ResultsDisplayProps {
-  players: Player[];
-  games: Array<{
-    id: string;
-    results: GameResult[];
-    payments: PaymentRecord[];
-  }>;
+type ResultsDisplayProps = {
+  players: SessionData['players'];
+  games: SessionData['games'];
   onNewGame: () => void;
   onFinishSession: () => void;
-}
+};
 
-export function ResultsDisplay({
+export const ResultsDisplay = ({
   players,
   games,
   onNewGame,
   onFinishSession,
-}: ResultsDisplayProps) {
+}: ResultsDisplayProps) => {
   const [showDetails, setShowDetails] = useState(false);
 
   const getPlayerName = (playerId: string) => {
@@ -139,4 +122,4 @@ export function ResultsDisplay({
       </div>
     </div>
   );
-}
+};

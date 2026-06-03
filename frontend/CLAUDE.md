@@ -90,6 +90,24 @@ return (
 
 ### 禁止事項
 - **手書きの `queryKey: [...]` で `useQuery` を呼ばない**。`queryOptions(...)` 経由必須（prefetch と key が食い違うとキャッシュヒットしなくなる）
+- **procedure のレスポンス型を手書きしない**。`RouterOutputs['<procedure>']` から導出する（サーバー側のスキーマ変更に自動追従させる）
+
+### 型の引き出し方
+`utils/trpc.ts` で `inferRouterOutputs<AppRouter>` を `RouterOutputs` として export 済み。子コンポーネントの props 等で型が必要なときはここから取る:
+
+```ts
+import type { RouterOutputs } from '@/utils/trpc';
+
+type SessionData = RouterOutputs['getSession'];
+type Player = RouterOutputs['listPlayers'][number];
+
+type Props = {
+  players: SessionData['players'];
+  games: SessionData['games'];
+};
+```
+
+`useQuery` の `data` は自動推論されるので明示不要。**props で子に渡す境界でだけ `RouterOutputs` を使う**。
 
 ### 現在の procedure（5つ）
 | procedure | 種別 | 用途 |
